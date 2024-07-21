@@ -22,4 +22,4 @@ ENV LANG=C.UTF-8echo
 
 CMD ["python", "sql_generate.py"]
 
-EXPOSE 80
+EXPOSE 7860

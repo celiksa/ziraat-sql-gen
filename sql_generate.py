@@ -1348,7 +1348,7 @@ def add_dataframe ( query_type):
 
 # Define the path to your guide image
 #image_path = "guest-template.png"  # Replace with your image path
-image_path = "Ziraat/Ziraat_POC_S4_ER.png"  # Replace with your image path
+image_path = "images/Ziraat_POC_S4_ER.png"  # Replace with your image path
 img = Image.open(image_path)
 
 with gr.Blocks() as demo:
