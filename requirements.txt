@@ -1,0 +1,5 @@
+ibm-watsonx-ai
+gradio
+Pillow
+pandas
+numpy

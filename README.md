@@ -1,0 +1,1 @@
+# ziraat-sql-gen
