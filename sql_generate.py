@@ -9,6 +9,9 @@ import http.client
 import pandas as pd
 import numpy as np
 import json
+import requests
+import io
+import openpyxl
 
 # To display example params enter
 GenParams().get_example_values()
@@ -1346,14 +1349,90 @@ def add_dataframe ( query_type):
     else:
         return gr.DataFrame(visible=False), gr.Code(language="sql")
 
+# Function to classify a single text
+def classify_text(text):
+    # Replace this with your actual API call
+    api_url = "https://ztclassification3-ztclassification.apps.6690d1a7f0f773001e2cf77c.ocp.techzone.ibm.com"
+    
+    response = requests.post(api_url, json={"text": text})
+    result = response.json()
+    return pd.DataFrame([{"Text": text, "Label": result["label"], "Score": result["score"]}])
+
+# Function to classify texts from an Excel file
+def classify_file(file):
+    df = pd.read_excel(file.name)
+    results = []
+    for text in df.iloc[:, 0]:
+        result = classify_text(text).iloc[0]
+        results.append(result)
+    return pd.DataFrame(results)
+
+import tempfile
+
+# Function to save results to Excel
+def save_to_excel(df):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False)
+    output.seek(0)
+
+       # Save the BytesIO content to a temporary file
+    temp_file = tempfile.NamedTemporaryFile(delete=False, prefix="ziraat_classified_",suffix='.xlsx')
+    temp_file.write(output.read())
+    temp_file.close()
+
+    return temp_file.name
+
+
+iframe_url = "https://web-chat.global.assistant.watson.appdomain.cloud/preview.html?backgroundImageURL=https%3A%2F%2Feu-de.assistant.watson.cloud.ibm.com%2Fpublic%2Fimages%2Fupx-b6be7111-313a-4ea9-81d0-e191261e9f66%3A%3A12d2f1fc-dbcf-4df1-a091-ab6933b57c0a&integrationID=b483e10c-006f-4743-a2d8-7a24ede095a6&region=eu-de&serviceInstanceID=b6be7111-313a-4ea9-81d0-e191261e9f66"
+#iframe_url = iframe_url.encode("utf-8")
+html_code = f"""
+<iframe src="{iframe_url}" style="width:100%; height:500px; border:none;"></iframe>
+""" 
+
 # Define the path to your guide image
 #image_path = "guest-template.png"  # Replace with your image path
 image_path = "images/Ziraat_POC_S4_ER.png"  # Replace with your image path
-img = Image.open(image_path)
+image_path_ziraat = "images/ziraat_logo.png"
+image_path_ibm = "images/ibm.png"
 
-with gr.Blocks() as demo:
-    gr.Markdown("SQL Generator")
-    with gr.Tab("Senaryo 4"):
+img = Image.open(image_path)
+img_ziraat = Image.open(image_path_ziraat)
+img_ibm = Image.open(image_path_ibm)
+
+html_img1 = """
+<div style="display: flex; align-items: center;">
+  <img src="https://logos-world.net/wp-content/uploads/2021/02/Ziraat-Bankasi-Logo.png" style="width: 20%; height: auto; margin-right: 50px;">
+  <div style="text-align: justify;"><h1>ÜRETKEN YAPAY ZEKA BÜYÜK DİL MODELLERİ KAVRAM KANITI (POC)</div>
+</div>
+
+"""
+
+js_func = """
+function refresh() {
+    const url = new URL(window.location);
+
+    if (url.searchParams.get('__theme') !== 'light') {
+        url.searchParams.set('__theme', 'light');
+        window.location.href = url.href;
+    }
+}
+"""
+
+theme = gr.themes.Base().set(
+    button_primary_background_fill='red',
+    button_primary_text_color='white'
+)
+
+html_widget = gr.HTML(html_code)
+
+with gr.Blocks(js=js_func,theme=theme) as demo:
+    
+    with gr.Row():  
+        image_html1 = gr.HTML(html_img1)
+
+    
+    with gr.Tab("Senaryo 4 - DB Entegrasyonu"):
         with gr.Row():
           text_output = gr.Code(label="SQL Kodu", language="sql")
           
@@ -1391,20 +1470,40 @@ with gr.Blocks() as demo:
           ), """
           guide_image = gr.Image(type="pil", value=img, label="Kullanılan DB Şeması")
     
-        
-    
-    """ with gr.Accordion("Daha fazlası için!", open=False):
-        
-        sql_type = gr.Dropdown(
-                ["SQL", "PL/SQL"], label="SQL Tipi"
-        ),
-        guide_image = gr.Image(type="pil", value=img, label="Kullanılan DB Şeması") """
-
     text_button.click(fn=generate_sql, inputs=[text_input,query_type], outputs=[text_output,text_result])
     query_type.change(fn=add_dataframe, inputs=query_type, outputs=[text_result,text_output])
-      
-    
 
+    with gr.Tab("Senaryo 5 - Kategori Tespiti "):  
+      with gr.Accordion("Watsonx Assistant", open=False):
+          with gr.Row():
+                html_widget.render()
+      with gr.Accordion("Tekli Sorgu", open=False):
+        with gr.Row():
+          class_input = gr.Textbox(lines=2, label="Tekli Sorgu", scale=2, interactive=True)
+          class_output = gr.DataFrame(label="Sınıflandırma Sonucu",interactive=False, visible=True,scale=3,wrap=True)
+        with gr.Row():  
+            class_button = gr.Button("Sınıflandır", variant="primary")
+            class_clear_butoon = gr.ClearButton(components=[class_input,class_output],value="Temizle", variant="stop" )
+        examples_class = gr.Examples(
+             examples=[
+                  "İtiraz Nedeni: #### Açıklama:  ORGANIZATION Hizmet Detayı:  ORGANIZATION Hizmet Tarihi: 01.01.1900 00:00:00 ORGANIZATION Hizmet Açıklaması:  Harcama İtirazı"],
+                  inputs=class_input,label="Örnek sorgular")
+
+        class_button.click(fn=classify_text, inputs=class_input, outputs=class_output)
+
+      with gr.Accordion("Çoklu Sorgu", open=False):
+            with gr.Row():
+                file_input = gr.File(label="Excel Dosyası Ekle", file_types=[".xlsx"])
+                file_output = gr.DataFrame(label="Sınıflandırma Sonuçları", interactive=False, scale=3,wrap=True)
+            with gr.Row():
+                file_button = gr.Button("Dosyayı Sınıflandır", variant="primary")
+                file_clear_button = gr.ClearButton(components=[file_input, file_output], value="Temizle", variant="stop")
+            with gr.Row():
+                download_button = gr.Button("Sonuçları İndir")
+            
+
+            file_button.click(fn=classify_file, inputs=file_input, outputs=file_output)
+            download_button.click(fn=save_to_excel, inputs=file_output, outputs=gr.File())
 
 demo.launch( server_name="0.0.0.0", server_port=7860)
 
