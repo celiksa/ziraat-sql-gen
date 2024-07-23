@@ -146,12 +146,12 @@ def run_query (sql_query):
       return query_response
 
 def add_dataframe ( query_type):
-    if query_type=="SQL":
-        return gr.DataFrame(visible=True,value=None), gr.Code(language="sql", value=None), gr.Button(visible=True)
+    if query_type=="SQL Çalıştır":
+        return gr.DataFrame(visible=True), gr.Code(language="sql"), gr.Button(visible=True)
     elif query_type=="SQL Açıklamalı":
-        return gr.DataFrame(visible=False,value=None), gr.Code(language="sql",value=None),gr.Button(visible=False)
+        return gr.DataFrame(visible=False), gr.Code(language="sql"),gr.Button(visible=False)
     else:
-        return gr.DataFrame(visible=True,value=None), gr.Code(language="sql",value=None),gr.Button(visible=True)
+        return gr.DataFrame(visible=False), gr.Code(language="sql"),gr.Button(visible=False)
 
 # Function to classify a single text
 def classify_text(text):
@@ -242,11 +242,11 @@ with gr.Blocks(js=js_func,theme=theme) as demo:
           text_output = gr.Code(label="SQL Kodu", language="sql", interactive=True)
           
           with gr.Column():
-            text_result = gr.DataFrame(label="SQL Sorgu Sonuç",interactive=False, visible=True)  
-            run_button = gr.Button("Çalıştır", visible=True)
+            text_result = gr.DataFrame(label="SQL Sorgu Sonuç",interactive=False, visible=False)  
+            run_button = gr.Button("Çalıştır", visible=False)
         with gr.Row():
           text_input = gr.Textbox(lines=2, label="Soru", scale=3)
-          query_type = gr.Dropdown(choices=["SQL", "SQL Açıklamalı"], label="Sorgu Tipi Seçiniz", scale=1, value="SQL",interactive=True)
+          query_type = gr.Dropdown(choices=["SQL", "SQL Açıklamalı", "SQL Çalıştır"], label="Sorgu Tipi Seçiniz", scale=1, value="SQL",interactive=True)
         with gr.Row():  
           text_button = gr.Button("Gönder", variant="primary")
           clear_butoon = gr.ClearButton(components=[text_input,text_output, text_result],value="Temizle", variant="stop" )
@@ -271,7 +271,7 @@ with gr.Blocks(js=js_func,theme=theme) as demo:
                   "find the top 5 customers who earned largest net total points with total number of tickets ",
                   "What customers has most reviews"], 
                   inputs=text_input,label="Örnek sorgular") """
-        with gr.Accordion("DB Şeması İçin Tıklayınız!", open=False):
+        with gr.Accordion("Daha fazlası için!", open=False):
      
           """ sql_type = gr.Dropdown(
                     ["SQL", "PL/SQL"], label="SQL Tipi"

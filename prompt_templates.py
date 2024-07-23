@@ -594,7 +594,7 @@ GROUP BY PFM.REF_MUSTERIURUN_ID
 ORDER BY MUSTERI_SAYISI
 FETCH FIRST 1 ROW ONLY;
 
-Please use the right column names as defined in the schema. Give me only one result in SQL format.
+Please use the right column names as defined in the schema. in  Output only give SQL and just 1 SQL. Otherwise you will be penalized.
 <leot_id|><|start_header_id|>user<|end_header_id|>
 
 Input: '{}'
