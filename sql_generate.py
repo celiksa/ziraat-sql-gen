@@ -13,9 +13,13 @@ import requests
 import io
 import openpyxl
 
-from prompt_templates import prompt_input
-from prompt_templates import prompt_input_def
+#from prompt_templates import prompt_input
+#from prompt_templates import prompt_input_def
 
+import prompt_templates
+
+prompt_input = prompt_templates.prompt_input
+prompt_input_def = prompt_templates.prompt_input_def
 
 # To display example params enter
 GenParams().get_example_values()

@@ -5,7 +5,7 @@ COPY requirements.txt ./
 # use no-cache-dir to limit disk usage https://stackoverflow.com/questions/45594707/what-is-pips-no-cache-dir-good-for
 RUN pip install -r requirements.txt --no-cache-dir
 
-COPY sql_generate.py ./
+COPY . ./
 
 #COPY prompts_definition.py ./
 #COPY .env ./
