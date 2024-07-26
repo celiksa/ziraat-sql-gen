@@ -1215,7 +1215,6 @@ Give me only one result with its step by step clear explaination of the query Ju
 
 Input: '{}'
 
-Output:
 
 <|eot_id |>
 <|start_header_id|>assistant<|end_header_id|>

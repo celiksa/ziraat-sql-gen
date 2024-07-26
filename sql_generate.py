@@ -13,6 +13,8 @@ import json
 import requests
 import io
 import openpyxl
+from pydantic import ValidationError
+
 
 #from prompt_templates import prompt_input
 #from prompt_templates import prompt_input_def
@@ -35,10 +37,11 @@ generate_params = {
     GenParams.MIN_NEW_TOKENS: 0
 }
 
+model_id = "meta-llama/llama-3-70b-instruct"
 # Model inference call
 model_inference = ModelInference(
     #model_id=ModelTypes.GRANITE_34B_CODE_INSTRUCT,
-    model_id=ModelTypes.LLAMA_3_70B_INSTRUCT,
+    model_id= model_id, #ModelTypes.LLAMA_3_70B_INSTRUCT,
     params=generate_params,
     credentials=Credentials(
                         api_key = "nbzzwhGIoF642cnM1vMMVi7ajy0IFgTICj8qJsbAh0VZ",
@@ -112,10 +115,12 @@ def query_db(query):
     return df
 
 
+
 def generate_sql(question,query_type):
     # This function takes a question and generates an SQL code snippet.
     # For the sake of this example, let's return a static SQL query.
     
+    print (model_inference.model_id)
     if query_type=="SQL Açıklamalı":
         input = prompt_input_def.format(question)
     else:
@@ -137,6 +142,12 @@ def generate_sql(question,query_type):
         return sql_query, None
    
    # return sql_query
+
+def change_model(model_type):
+    model_inference.model_id = model_type
+    print (model_inference.model_id)
+    return  None
+
 
 def run_query (sql_query):
     if sql_query==None or sql_query=="":
@@ -164,7 +175,7 @@ def classify_text(text):
 
 # Function to classify texts from an Excel file
 def classify_file(file):
-    df = pd.read_excel(file.name)
+    df = pd.read_excel(file.name, header=None)
     results = []
     for text in df.iloc[:, 0]:
         result = classify_text(text).iloc[0]
@@ -180,12 +191,47 @@ def save_to_excel(df):
     output.seek(0)
 
        # Save the BytesIO content to a temporary file
-    temp_file = tempfile.NamedTemporaryFile(delete=False, prefix="ziraat_classified_",suffix='.xlsx')
+    temp_file = tempfile.NamedTemporaryFile(delete=False, prefix="ziraat_output_",suffix='.xlsx')
     temp_file.write(output.read())
     temp_file.close()
 
     return temp_file.name
 
+def sql_file (file, query_type):
+      
+      df = pd.read_excel(file.name, header=None)
+      input_texts = []
+      generated_sqls = []
+      sql_results=[]
+      
+      for text in df.iloc[:, 0]:
+          
+          input_texts.append(text)
+          
+          if query_type == "SQL Açıklamalı":
+              input = prompt_input_def.format(text)
+
+          else:
+              input = prompt_input.format(text)
+              
+          
+          sql_query = model_inference.generate_text(prompt=input, guardrails=False)
+          
+
+          print(sql_query)
+          generated_sqls.append(sql_query)
+      print (input_texts)
+      print(generated_sqls)
+      # Create DataFrame with two columns
+      result_df = pd.DataFrame({
+          'Soru': input_texts,
+          'SQL Kodu': generated_sqls
+      })
+      
+      print(result_df)
+    
+      
+      return result_df
 
 iframe_url = "https://web-chat.global.assistant.watson.appdomain.cloud/preview.html?backgroundImageURL=https%3A%2F%2Feu-de.assistant.watson.cloud.ibm.com%2Fpublic%2Fimages%2Fupx-b6be7111-313a-4ea9-81d0-e191261e9f66%3A%3A12d2f1fc-dbcf-4df1-a091-ab6933b57c0a&integrationID=b483e10c-006f-4743-a2d8-7a24ede095a6&region=eu-de&serviceInstanceID=b6be7111-313a-4ea9-81d0-e191261e9f66"
 #iframe_url = iframe_url.encode("utf-8")
@@ -238,39 +284,61 @@ with gr.Blocks(js=js_func,theme=theme) as demo:
 
     
     with gr.Tab("Senaryo 4 - DB Entegrasyonu"):
-        with gr.Row():
-          text_output = gr.Code(label="SQL Kodu", language="sql", interactive=True)
-          
-          with gr.Column():
-            text_result = gr.DataFrame(label="SQL Sorgu Sonuç",interactive=False, visible=True)  
-            run_button = gr.Button("Çalıştır", visible=True)
-        with gr.Row():
-          text_input = gr.Textbox(lines=2, label="Soru", scale=3)
-          query_type = gr.Dropdown(choices=["SQL", "SQL Açıklamalı"], label="Sorgu Tipi Seçiniz", scale=1, value="SQL",interactive=True)
-        with gr.Row():  
-          text_button = gr.Button("Gönder", variant="primary")
-          clear_butoon = gr.ClearButton(components=[text_input,text_output, text_result],value="Temizle", variant="stop" )
-       
-        examples = gr.Examples(
-             examples=[
-                  "Bireysl seggmentte kaç müşteri vardır?",
-                  "Açık şubeler arasında ATM sayısı en az olan hangisidir?",
-                  "Kurumsal&Ticari müşterilerin  en az sahip olduğu ürün nedir?",
-                  "Açık şubeler arasında en fazla müşterisi olan şube hangisidir, \"GM HAVUZU\" hariç"], 
-                  inputs=text_input,label="Örnek sorgular")
-        """examples = gr.Examples(
-             examples=[
-                  "Geçtiğimiz altı ay içinde en fazla gelir getiren en iyi 5 ürünü bul",
-                  "En fazla net toplam puan kazanan ve toplam bilet sayısına sahip en iyi 5 müşteriyi bul",
-                  "En çok yorumu olan müşteriler kimler?"], 
-                  inputs=text_input,label="Örnek sorgular")"""
+        with gr.Accordion("Tekli Sorgu", open=False):
+          with gr.Row():
+            text_output = gr.Code(label="SQL Kodu", language="sql", interactive=True)
+            
+            with gr.Column():
+              text_result = gr.DataFrame(label="SQL Sorgu Sonuç",interactive=False, visible=True)  
+              run_button = gr.Button("Çalıştır", visible=True)
+          with gr.Row():
+            text_input = gr.Textbox(lines=2, label="Soru", scale=3)
+            with gr.Column():              
+              query_type = gr.Dropdown(choices=["SQL", "SQL Açıklamalı"], label="Sorgu Tipi Seçiniz", scale=1, value="SQL",interactive=True)
+              #model_type = gr.Dropdown(choices=["meta-llama/llama-3-70b-instruct", "meta-llama/llama-3-405b-instruct","ibm/granite-34b-code-instruct"], label="Model Seçiniz", scale=1, value="meta-llama/llama-3-70b-instruct",interactive=True)
+          with gr.Row():  
+            text_button = gr.Button("Gönder", variant="primary")
+            clear_butoon = gr.ClearButton(components=[text_input,text_output, text_result],value="Temizle", variant="stop" )
         
-        """  examples = gr.Examples(
-             examples=[
-                  "Find the top 5 products that have generated the most revenue in the past six months",
-                  "find the top 5 customers who earned largest net total points with total number of tickets ",
-                  "What customers has most reviews"], 
-                  inputs=text_input,label="Örnek sorgular") """
+          examples = gr.Examples(
+              examples=[
+                    "Bireysl seggmentte kaç müşteri vardır?",
+                    "Açık şubeler arasında ATM sayısı en az olan hangisidir?",
+                    "Kurumsal&Ticari müşterilerin  en az sahip olduğu ürün nedir?",
+                    "Açık şubeler arasında en fazla müşterisi olan şube hangisidir, \"GM HAVUZU\" hariç"], 
+                    inputs=text_input,label="Örnek sorgular")
+          """examples = gr.Examples(
+              examples=[
+                    "Geçtiğimiz altı ay içinde en fazla gelir getiren en iyi 5 ürünü bul",
+                    "En fazla net toplam puan kazanan ve toplam bilet sayısına sahip en iyi 5 müşteriyi bul",
+                    "En çok yorumu olan müşteriler kimler?"], 
+                    inputs=text_input,label="Örnek sorgular")"""
+          
+          """  examples = gr.Examples(
+              examples=[
+                    "Find the top 5 products that have generated the most revenue in the past six months",
+                    "find the top 5 customers who earned largest net total points with total number of tickets ",
+                    "What customers has most reviews"], 
+                    inputs=text_input,label="Örnek sorgular") """
+          text_button.click(fn=generate_sql, inputs=[text_input,query_type], outputs=[text_output,text_result])
+          query_type.change(fn=add_dataframe, inputs=query_type, outputs=[text_result,text_output, run_button])
+          #model_type.change(fn=change_model, inputs=model_type)
+          run_button.click(fn=run_query, inputs=text_output, outputs=text_result )
+        with gr.Accordion("Çoklu Sorgu", open=False):
+            with gr.Row():
+                with gr.Column():
+                  file_db_input = gr.File(label="Excel Dosyası Ekle", file_types=[".xlsx"])
+                  query_db_type = gr.Dropdown(choices=["SQL", "SQL Açıklamalı"], label="Sorgu Tipi Seçiniz", scale=1, value="SQL",interactive=True)
+                file_db_output = gr.DataFrame(label="SQL Kodları", interactive=False, scale=3,wrap=True)
+            with gr.Row():
+                file_db_button = gr.Button("Dosyadan SQL Kodları Oluştur", variant="primary")
+                file_clear_db_button = gr.ClearButton(components=[file_db_input, file_db_output], value="Temizle", variant="stop")
+            with gr.Row():
+                download_db_button = gr.Button("Sonuçları İndir")
+            
+
+            file_db_button.click(fn=sql_file, inputs=[file_db_input,query_db_type], outputs=file_db_output)
+            download_db_button.click(fn=save_to_excel, inputs=file_db_output, outputs=gr.File())
         with gr.Accordion("DB Şeması İçin Tıklayınız!", open=False):
      
           """ sql_type = gr.Dropdown(
@@ -278,9 +346,7 @@ with gr.Blocks(js=js_func,theme=theme) as demo:
           ), """
           guide_image = gr.Image(type="pil", value=img, label="Kullanılan DB Şeması")
     
-    text_button.click(fn=generate_sql, inputs=[text_input,query_type], outputs=[text_output,text_result])
-    query_type.change(fn=add_dataframe, inputs=query_type, outputs=[text_result,text_output, run_button])
-    run_button.click(fn=run_query, inputs=text_output, outputs=text_result )
+    
 
     with gr.Tab("Senaryo 5 - Kategori Tespiti "):  
       with gr.Accordion("Watsonx Assistant", open=False):
