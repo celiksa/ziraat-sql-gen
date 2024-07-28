@@ -23,6 +23,7 @@ import prompt_templates
 
 prompt_input = prompt_templates.prompt_input
 prompt_input_def = prompt_templates.prompt_input_def
+prompt_input_sen1 = prompt_templates.prompt_input_sen1
 
 # To display example params enter
 GenParams().get_example_values()
@@ -182,6 +183,22 @@ def classify_file(file):
         results.append(result)
     return pd.DataFrame(results)
 
+def send_to_chatbot(file):
+    df = pd.read_excel(file.name, header=None)
+    results = []
+    inputs = []
+    for text in df.iloc[:, 0]:
+        inputs.append(text)
+        input = prompt_input_sen1.format(text)
+        print (input)
+        result =  model_inference.generate_text(prompt=input,guardrails=False)
+        print (result)
+        results.append(result)
+    result_df = pd.DataFrame({
+          'Soru': inputs,
+          'Asistan Cevap': results
+      })
+    return result_df
 
 # Function to save results to Excel
 def save_to_excel(df):
@@ -237,7 +254,13 @@ iframe_url = "https://web-chat.global.assistant.watson.appdomain.cloud/preview.h
 #iframe_url = iframe_url.encode("utf-8")
 html_code = f"""
 <iframe src="{iframe_url}" style="width:100%; height:500px; border:none;"></iframe>
-""" 
+"""
+
+iframe_url_sen1 = "https://web-chat.global.assistant.watson.appdomain.cloud/preview.html?backgroundImageURL=https%3A%2F%2Fus-south.assistant.watson.cloud.ibm.com%2Fpublic%2Fimages%2Fupx-da966e02-efb8-4ac7-a59c-c64cd30d7628%3A%3A1273bc22-77cd-40fb-9b08-841fd28797b3&integrationID=d7abeb57-baf9-41c0-b53e-663500b50a70&region=us-south&serviceInstanceID=da966e02-efb8-4ac7-a59c-c64cd30d7628"
+#iframe_url = iframe_url.encode("utf-8")
+html_code_sen1 = f"""
+<iframe src="{iframe_url_sen1}" style="width:100%; height:500px; border:none;"></iframe>
+"""
 
 # Define the path to your guide image
 #image_path = "guest-template.png"  # Replace with your image path
@@ -276,6 +299,7 @@ theme = gr.themes.Base().set(
 )
 
 html_widget = gr.HTML(html_code)
+html_widget_sen1 = gr.HTML(html_code_sen1)
 
 with gr.Blocks(js=js_func,theme=theme) as demo:
     
@@ -379,6 +403,24 @@ with gr.Blocks(js=js_func,theme=theme) as demo:
 
             file_button.click(fn=classify_file, inputs=file_input, outputs=file_output)
             download_button.click(fn=save_to_excel, inputs=file_output, outputs=gr.File())
+
+    with gr.Tab("Senaryo 1 - Genel Sohbet Botu"):
+        with gr.Accordion("Watsonx Assistant", open=False):
+          with gr.Row():
+                html_widget_sen1.render()
+        with gr.Accordion("Çoklu Sorgu", open=False):
+            with gr.Row():
+                file_input_sen1 = gr.File(label="Excel Dosyası Ekle", file_types=[".xlsx"])
+                file_output_sen1 = gr.DataFrame(label="Chatbot Sonuçları", interactive=False, scale=3,wrap=True)
+            with gr.Row():
+                file_button_sen1 = gr.Button("Dosyayı Chatbota Gönder", variant="primary")
+                file_clear_button_sen1 = gr.ClearButton(components=[file_input_sen1, file_output_sen1], value="Temizle", variant="stop")
+            with gr.Row():
+                download_button_sen1 = gr.Button("Sonuçları İndir")
+            
+
+            file_button_sen1.click(fn=send_to_chatbot, inputs=file_input_sen1, outputs=file_output_sen1)
+            download_button_sen1.click(fn=save_to_excel, inputs=file_output_sen1, outputs=gr.File())
 
 demo.launch( server_name="0.0.0.0", server_port=7860)
 

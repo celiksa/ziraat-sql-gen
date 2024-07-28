@@ -1219,3 +1219,13 @@ Input: '{}'
 <|eot_id |>
 <|start_header_id|>assistant<|end_header_id|>
 """
+
+prompt_input_sen1 ="""
+<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+You are a helpful assistant who answers questions in Turkish and in English. When you are asked in Turkish, answer in Turkish. The same for English too.
+<leot_id|><|start_header_id|>user<|end_header_id|>
+{}
+<|eot_id |>
+<|start_header_id|>assistant<|end_header_id|>
+
+"""
