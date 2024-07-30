@@ -369,8 +369,7 @@ with gr.Blocks(js=js_func,theme=theme) as demo:
                     ["SQL", "PL/SQL"], label="SQL Tipi"
           ), """
           guide_image = gr.Image(type="pil", value=img, label="Kullanılan DB Şeması")
-    
-    
+
 
     with gr.Tab("Senaryo 5 - Kategori Tespiti "):  
       with gr.Accordion("Watsonx Assistant", open=False):
@@ -422,5 +421,23 @@ with gr.Blocks(js=js_func,theme=theme) as demo:
             file_button_sen1.click(fn=send_to_chatbot, inputs=file_input_sen1, outputs=file_output_sen1)
             download_button_sen1.click(fn=save_to_excel, inputs=file_output_sen1, outputs=gr.File())
 
+    with gr.Tab("Senaryo 3 - Servis Entegrasyonu"):
+        with gr.Accordion("Buaraya", open=False):
+          with gr.Row():
+                text_3 = gr.Textbox()
+
+    with gr.Tab("Senaryo 2 - Doküman Bazlı Cevaplama"):
+
+        with gr.Accordion("Buaraya", open=False):
+          with gr.Tab("Refere İçeren Döküman"):
+              
+          #with gr.Tab("Revize Döküman"):
+              
+          #with gr.Tab("URL"):
+              
+          #with gr.Tab("Büyük Boy"):
+          
+          #with gr.Row():
+               text_2 = gr.Textbox()
 demo.launch( server_name="0.0.0.0", server_port=7860)
 
