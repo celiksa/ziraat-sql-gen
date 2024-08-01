@@ -1,10 +1,3 @@
-ibm-watsonx-ai
-gradio
-Pillow
-pandas
-numpy
-openpyxl
-
 dataclasses-json==0.6.4 ; python_version >= "3.9" and python_version < "3.13"
 flask_openapi3==3.0.0 ; python_version >= "3.9" and python_version < "3.13"
 fastjsonschema==2.19.1 ; python_version >= "3.9" and python_version < "3.13"

@@ -16,6 +16,7 @@ import openpyxl
 from pydantic import ValidationError
 
 
+
 #from prompt_templates import prompt_input
 #from prompt_templates import prompt_input_def
 
@@ -250,6 +251,12 @@ def sql_file (file, query_type):
       
       return result_df
 
+def send_to_tcmb(input, api_key):
+    
+    
+    response = tcmb.index(input, api_key)
+    return  response
+
 iframe_url = "https://web-chat.global.assistant.watson.appdomain.cloud/preview.html?backgroundImageURL=https%3A%2F%2Feu-de.assistant.watson.cloud.ibm.com%2Fpublic%2Fimages%2Fupx-b6be7111-313a-4ea9-81d0-e191261e9f66%3A%3A12d2f1fc-dbcf-4df1-a091-ab6933b57c0a&integrationID=b483e10c-006f-4743-a2d8-7a24ede095a6&region=eu-de&serviceInstanceID=b6be7111-313a-4ea9-81d0-e191261e9f66"
 #iframe_url = iframe_url.encode("utf-8")
 html_code = f"""
@@ -424,7 +431,12 @@ with gr.Blocks(js=js_func,theme=theme) as demo:
     with gr.Tab("Senaryo 3 - Servis Entegrasyonu"):
         with gr.Accordion("Buaraya", open=False):
           with gr.Row():
-                text_3 = gr.Textbox()
+                text_3_input = gr.Textbox(lines=2, label="Soru")
+                text_3_apikey = gr.Textbox(lines=1, label="apikey")
+                text_3_output = gr.Textbox(label="Sonuç", interactive=False)
+          with gr.Row():
+                button_send1 = gr.Button("Dosyayı Chatbota Gönder", variant="primary")
+        button_send1.click(fn=send_to_tcmb, inputs=[text_3_input,text_3_apikey], outputs=text_3_output)
 
     with gr.Tab("Senaryo 2 - Doküman Bazlı Cevaplama"):
 
