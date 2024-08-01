@@ -5,7 +5,7 @@ from ibm_watsonx_ai.foundation_models.utils.enums import ModelTypes, DecodingMet
 import gradio as gr
 from PIL import Image
 import tempfile
-
+import os
 import http.client
 import pandas as pd
 import numpy as np
@@ -252,11 +252,67 @@ def sql_file (file, query_type):
       
       return result_df
 
-def send_to_tcmb(input, api_key):
+def send_to_tcmb(input,type):
+    
+    api_key = os.environ.get('OPENAI_API_KEY')
+
+    
+    try:
+        response = tcmb.index(input, api_key)
     
     
-    response = tcmb.index(input, api_key)
-    return  response
+        # Extract the generated_answer
+        generated_answer = response['generated_answer']
+
+        # Remove the generated_answer from the original dictionary
+        rest_of_data = response.copy()
+        del rest_of_data['generated_answer']
+
+        # Convert the rest of the data to a string
+        rest_of_data_str = str(rest_of_data)
+        if type == "normal":
+            return generated_answer, rest_of_data_str
+        # Create a DataFrame
+        else:
+            df = pd.DataFrame({
+                'Cevap': [generated_answer],
+                'JSON Detay': [rest_of_data_str]
+            })
+            return  df
+    except Exception as e:
+        # Handle the exception
+        error_message = "Servisten Cevap Alınamadı"
+        # You might want to log the error or return it to the user
+        return error_message, error_message
+def tcmb_file (file):
+      
+      df = pd.read_excel(file.name, header=None)
+      input_texts = []
+      generated_text = []
+      generated_json=[]
+      
+      for text in df.iloc[:, 0]:
+          
+          input_texts.append(text)
+          
+          tcmb_text, tcmb_json = send_to_tcmb(text, "normal")
+
+          #print(sql_query)
+          generated_text.append(tcmb_text)
+          generated_json.append(tcmb_json)
+      #print (input_texts)
+      #print(generated_sqls)
+      # Create DataFrame with two columns
+      result_df = pd.DataFrame({
+          'Soru': input_texts,
+          'Cevap': generated_text,
+          'JSON Detay': generated_json
+      })
+      
+      #print(result_df)
+    
+      
+      return result_df
 
 iframe_url = "https://web-chat.global.assistant.watson.appdomain.cloud/preview.html?backgroundImageURL=https%3A%2F%2Feu-de.assistant.watson.cloud.ibm.com%2Fpublic%2Fimages%2Fupx-b6be7111-313a-4ea9-81d0-e191261e9f66%3A%3A12d2f1fc-dbcf-4df1-a091-ab6933b57c0a&integrationID=b483e10c-006f-4743-a2d8-7a24ede095a6&region=eu-de&serviceInstanceID=b6be7111-313a-4ea9-81d0-e191261e9f66"
 #iframe_url = iframe_url.encode("utf-8")
@@ -430,15 +486,48 @@ with gr.Blocks(js=js_func,theme=theme) as demo:
             download_button_sen1.click(fn=save_to_excel, inputs=file_output_sen1, outputs=gr.File())
 
     with gr.Tab("Senaryo 3 - Servis Entegrasyonu"):
-        with gr.Accordion("Buaraya", open=False):
-          with gr.Row():
-                text_3_input = gr.Textbox(lines=2, label="Soru")
-                text_3_apikey = gr.Textbox(lines=1, label="apikey")
-                text_3_output = gr.Textbox(label="Sonuç", interactive=False)
-          with gr.Row():
-                button_send1 = gr.Button("Dosyayı Chatbota Gönder", variant="primary")
-        button_send1.click(fn=send_to_tcmb, inputs=[text_3_input,text_3_apikey], outputs=text_3_output)
+        with gr.Accordion("Tekli Sorgu", open=False):
+            with gr.Row():
+                    with gr.Column(scale=1):
+                        text_3_output = gr.Textbox(interactive=False, label="Cevap")
+                    with gr.Column(2):
+                        text_3_output_json = gr.Textbox(interactive=False,label="JSON Detay")
+            with gr.Row():
+                        text_3_input = gr.Textbox(lines=2, label="Soru")
 
+            with gr.Row():
+                    button_sen_3 = gr.Button("Gönder", variant="primary")
+                    clear_button_sen3 = gr.ClearButton(components=[text_3_input, text_3_output], value="Temizle", variant="stop")
+            examples_3 = gr.Examples(
+                examples=[
+                        "Nisan 2024'te İsviçre Frangı'nın Türk Lirası karşısında gördüğü en yüksek seviye nedir?",
+                        "Merkez Bankası'nın açıkladığı son verilere göre Yurt Dışında Yerleşik Kişilerin Portföyündeki Hisse Senedi ve Borçlanma Senetlerinin yıllık değişim oranı nedir?",
+                        "2023 yılında toplam Banka Kartı ve Kredi Kartı harcamalarının yüzde kaçı Havayolları ve Konaklama sektörlerinde yapılmıştır? Harcama tutarlarıyla beraber göster."],
+                        inputs=text_3_input,label="Örnek sorgular")
+            button_sen_3.click(
+                fn=lambda x: send_to_tcmb(x, "normal"),
+                inputs=[text_3_input],
+                outputs=[text_3_output, text_3_output_json]
+            )
+        
+
+        with gr.Accordion("Çoklu Sorgu", open=False):
+            with gr.Row():
+                    file_input_sen3 = gr.File(label="Excel Dosyası Ekle", file_types=[".xlsx"],scale=1)
+                    file_output_sen3 = gr.DataFrame(label="Sorgu Sonuçları", interactive=False,wrap=True, col_count=3,scale=3)
+            with gr.Row():
+                    file_button_sen3 = gr.Button("Dosyayı Servise Gönder", variant="primary")
+                    file_clear_button_sen3 = gr.ClearButton(components=[file_input_sen3, file_output_sen3], value="Temizle", variant="stop")
+            with gr.Row():
+                    download_button_sen3 = gr.Button("Sonuçları İndir")
+            
+            
+            file_button_sen3.click(fn=tcmb_file, inputs=file_input_sen3, outputs=file_output_sen3)
+            download_button_sen3.click(fn=save_to_excel, inputs=file_output_sen3, outputs=gr.File())
+
+            
+                
+    """
     with gr.Tab("Senaryo 2 - Doküman Bazlı Cevaplama"):
 
         with gr.Accordion("Buaraya", open=False):
@@ -452,5 +541,7 @@ with gr.Blocks(js=js_func,theme=theme) as demo:
           
           #with gr.Row():
                text_2 = gr.Textbox()
+    """
+
 demo.launch( server_name="0.0.0.0", server_port=7860)
 
