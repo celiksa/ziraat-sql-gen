@@ -6,7 +6,6 @@ numpy
 openpyxl
 
 dataclasses-json==0.6.4 ; python_version >= "3.9" and python_version < "3.13"
-flask_openapi3==3.0.0 ; python_version >= "3.9" and python_version < "3.13"
 fastjsonschema==2.19.1 ; python_version >= "3.9" and python_version < "3.13"
 json5==0.9.14 ; python_version >= "3.9" and python_version < "3.13"
 evds ; python_version >= "3.9" and python_version < "3.13"
@@ -15,8 +14,6 @@ jsonpointer==2.4 ; python_version >= "3.9" and python_version < "3.13"
 jsonschema-specifications==2023.12.1 ; python_version >= "3.9" and python_version < "3.13"
 jsonschema==4.21.1 ; python_version >= "3.9" and python_version < "3.13"
 jsonschema[format-nongpl]==4.21.1 ; python_version >= "3.9" and python_version < "3.13"
-pydantic-core==2.16.1 ; python_version >= "3.9" and python_version < "3.13"
-pydantic==2.6.0 ; python_version >= "3.9" and python_version < "3.13"
 python-json-logger==2.0.7 ; python_version >= "3.9" and python_version < "3.13"
 requests-oauthlib==1.3.1 ; python_version >= "3.9" and python_version < "3.13"
 requests==2.31.0 ; python_version >= "3.9" and python_version < "3.13"

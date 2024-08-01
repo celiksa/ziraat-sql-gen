@@ -11,13 +11,13 @@ import logging
 import os
 import requests
 import json
-from pydantic import BaseModel
-from flask_openapi3 import Info, Tag
-from flask_openapi3 import OpenAPI
+#from pydantic import BaseModel
+#from flask_openapi3 import Info, Tag
+#from flask_openapi3 import OpenAPI
 print(os.getcwd())
 
-info = Info(title="Ziraat Teknoloji API", version="1.0.0")
-app = OpenAPI(__name__, info=info)
+#info = Info(title="Ziraat Teknoloji API", version="1.0.0")
+#app = OpenAPI(__name__, info=info)
 logging.getLogger("unitxt").setLevel(logging.ERROR)
 
 
@@ -258,11 +258,11 @@ class EVDS:
         required_fields = ["startdate", "enddate"]
         return all(field in parsed_query for field in required_fields)       
 
-tcmb_tag = Tag(name="llm", description="LLM Api for Ziraat Teknoloji")
+#tcmb_tag = Tag(name="llm", description="LLM Api for Ziraat Teknoloji")
 
-class ModelQuery(BaseModel):
-    text: str
-    key: str
+#class ModelQuery(BaseModel):
+#    text: str
+#    key: str
 
 #@app.post("/", summary="get tcmb recommendation with llm", tags=[tcmb_tag])
 def index(model_query, api):

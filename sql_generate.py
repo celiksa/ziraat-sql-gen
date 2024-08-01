@@ -13,7 +13,7 @@ import json
 import requests
 import io
 import openpyxl
-from pydantic import ValidationError
+#from pydantic import ValidationError
 import tcmb
 
 
