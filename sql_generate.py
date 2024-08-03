@@ -15,7 +15,11 @@ import io
 import openpyxl
 #from pydantic import ValidationError
 import tcmb
-
+# Example usage with Gradio
+import gradio as gr
+from datetime import datetime
+import random
+import mimetypes
 
 
 #from prompt_templates import prompt_input
@@ -27,8 +31,13 @@ prompt_input = prompt_templates.prompt_input
 prompt_input_def = prompt_templates.prompt_input_def
 prompt_input_sen1 = prompt_templates.prompt_input_sen1
 
+
+#senaryo2_api_base_url = "http://127.0.0.1:8000/"
+senaryo2_api_base_url = "https://rag-buyuk-boyutlu-dokuman-ztsqlgen.apps.6690d1a7f0f773001e2cf77c.ocp.techzone.ibm.com/"
 # To display example params enter
 GenParams().get_example_values()
+
+
 
 # Model parameters
 generate_params = {
@@ -116,7 +125,6 @@ def query_db(query):
 
     df = pd.DataFrame(rows, columns=columns)
     return df
-
 
 
 def generate_sql(question,query_type):
@@ -284,6 +292,7 @@ def send_to_tcmb(input,type):
         error_message = "Servisten Cevap Alınamadı"
         # You might want to log the error or return it to the user
         return error_message, error_message
+
 def tcmb_file (file):
       
       df = pd.read_excel(file.name, header=None)
@@ -314,6 +323,247 @@ def tcmb_file (file):
       
       return result_df
 
+#Senaryo 2 add files
+def get_mime_type(file_extension):
+    mime_types = {
+        '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        '.xls': 'application/vnd.ms-excel',
+        '.pdf': 'application/pdf',
+        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        '.doc': 'application/msword',
+        '.txt': 'text/plain'
+    }
+    return mime_types.get(file_extension.lower(), mimetypes.guess_type(file_extension)[0] or 'application/octet-stream')
+
+def upload_pdf(files, collection_name):
+    url = senaryo2_api_base_url + "upload_pdfs"
+    # Prepare the files dictionary
+    file_type = os.path.splitext(files)[1].lower()
+    mime_type = get_mime_type(file_type)
+
+    file = {'files': (files, open(files, 'rb'), mime_type)}
+    
+    # Prepare the parameters
+    params = {'collection_name': collection_name}
+    
+    # Set the headers
+    headers = {'accept': 'application/json'}
+    
+    try:
+        # Make the POST request
+        response = requests.post(url, params=params, headers=headers, files=file)
+        
+        json_response = response.json()
+        
+        # Extract and return the collection_name from the response
+        return json_response.get('collection_name')
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred: {e}")
+        return None
+    #finally:
+        # Ensure the file is closed
+        #files['files'][1].close()
+
+def add_files_to_collection(files):
+    
+    #print (file_types)
+    if not files:
+        return "No files selected."
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    random_suffix = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz0123456789', k=6))
+    collection_name = f"collection_{timestamp}_{random_suffix}"
+    result = None
+    for file in files:
+        result = upload_pdf(file,collection_name)
+    return result
+
+def send_to_rag(query,collection_name, max_token=900):
+    url = senaryo2_api_base_url + "perform_rag"
+    # Prepare the headers
+    headers = {
+        'accept': 'application/json',
+        'Content-Type': 'application/json'
+    }
+
+    # Prepare the payload
+    payload = {
+        "collection_name": collection_name,
+        "query": query,
+        "max_token": max_token
+    }
+
+    try:
+        # Make the POST request
+        response = requests.post(url, headers=headers, data=json.dumps(payload))
+        
+        # Check if the request was successful
+        response.raise_for_status()
+        
+        # Parse the JSON response
+        json_response = response.json()
+        
+        # Extract and return only the 'result' field
+        return json_response.get('result')
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred: {e}")
+        return None
+
+def file_to_RAG(file,collection_name, max_token = 900):
+    df = pd.read_excel(file.name, header=None)
+    results = []
+    inputs = []
+    for text in df.iloc[:, 0]:
+        inputs.append(text)
+        
+        result =  send_to_rag(text,collection_name, max_token)
+        #print (result)
+        results.append(result)
+    result_df = pd.DataFrame({
+          'Soru': inputs,
+          'RAG Cevap': results
+      })
+    return result_df
+
+def send_to_bigdoc(query, max_token=900):
+    url = senaryo2_api_base_url + "perform_big_rag"
+    # Prepare the headers
+    headers = {
+        'accept': 'application/json',
+        'Content-Type': 'application/json'
+    }
+
+    # Prepare the payload
+    payload = {
+        "query": query,
+        "max_token": max_token
+    }
+
+    try:
+        # Make the POST request
+        response = requests.post(url, headers=headers, data=json.dumps(payload))
+        
+        # Check if the request was successful
+        response.raise_for_status()
+        
+        # Parse the JSON response
+        json_response = response.json()
+        
+        # Extract and return only the 'result' field
+        return json_response.get('result')
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred: {e}")
+        return None
+
+def file_to_bigdoc(file, max_token = 900):
+    df = pd.read_excel(file.name, header=None)
+    results = []
+    inputs = []
+    for text in df.iloc[:, 0]:
+        inputs.append(text)
+        
+        result =  send_to_bigdoc(text, max_token)
+        #print (result)
+        results.append(result)
+    result_df = pd.DataFrame({
+          'Soru': inputs,
+          'Big Doc Cevap': results
+      })
+    return result_df
+
+def send_to_excel(query, max_token=900):
+    url = senaryo2_api_base_url + "perform_excel_rag"
+    # Prepare the headers
+    headers = {
+        'accept': 'application/json',
+        'Content-Type': 'application/json'
+    }
+
+    # Prepare the payload
+    payload = {
+        "query": query,
+        "max_token": max_token
+    }
+
+    try:
+        # Make the POST request
+        response = requests.post(url, headers=headers, data=json.dumps(payload))
+        
+        # Check if the request was successful
+        response.raise_for_status()
+        
+        # Parse the JSON response
+        json_response = response.json()
+        
+        # Extract and return only the 'result' field
+        return json_response.get('result')
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred: {e}")
+        return None
+
+def file_to_excel(file, max_token = 900):
+    df = pd.read_excel(file.name, header=None)
+    results = []
+    inputs = []
+    for text in df.iloc[:, 0]:
+        inputs.append(text)
+        
+        result =  send_to_excel(text, max_token)
+        #print (result)
+        results.append(result)
+    result_df = pd.DataFrame({
+          'Soru': inputs,
+          'Excel Cevap': results
+      })
+    return result_df
+
+
+def send_to_tablo(query, max_token=900):
+    url = senaryo2_api_base_url + "perform_table_rag"
+    # Prepare the headers
+    headers = {
+        'accept': 'application/json',
+        'Content-Type': 'application/json'
+    }
+
+    # Prepare the payload
+    payload = {
+        "query": query,
+        "max_token": max_token
+    }
+
+    try:
+        # Make the POST request
+        response = requests.post(url, headers=headers, data=json.dumps(payload))
+        
+        # Check if the request was successful
+        response.raise_for_status()
+        
+        # Parse the JSON response
+        json_response = response.json()
+        
+        # Extract and return only the 'result' field
+        return json_response.get('result')
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred: {e}")
+        return None
+
+def file_to_tablo(file, max_token = 900):
+    df = pd.read_excel(file.name, header=None)
+    results = []
+    inputs = []
+    for text in df.iloc[:, 0]:
+        inputs.append(text)
+        
+        result =  send_to_tablo(text, max_token)
+        #print (result)
+        results.append(result)
+    result_df = pd.DataFrame({
+          'Soru': inputs,
+          'Tablo Cevap': results
+      })
+    return result_df
+
+
 iframe_url = "https://web-chat.global.assistant.watson.appdomain.cloud/preview.html?backgroundImageURL=https%3A%2F%2Feu-de.assistant.watson.cloud.ibm.com%2Fpublic%2Fimages%2Fupx-b6be7111-313a-4ea9-81d0-e191261e9f66%3A%3A12d2f1fc-dbcf-4df1-a091-ab6933b57c0a&integrationID=b483e10c-006f-4743-a2d8-7a24ede095a6&region=eu-de&serviceInstanceID=b6be7111-313a-4ea9-81d0-e191261e9f66"
 #iframe_url = iframe_url.encode("utf-8")
 html_code = f"""
@@ -337,6 +587,8 @@ image_path_ibm = "images/ibm.png"
 img = Image.open(image_path)
 img_ziraat = Image.open(image_path_ziraat)
 img_ibm = Image.open(image_path_ibm)
+
+
 
 html_img1 = """
 <div style="display: flex; align-items: center;">
@@ -485,7 +737,7 @@ with gr.Blocks(js=js_func,theme=theme) as demo:
             file_button_sen1.click(fn=send_to_chatbot, inputs=file_input_sen1, outputs=file_output_sen1)
             download_button_sen1.click(fn=save_to_excel, inputs=file_output_sen1, outputs=gr.File())
 
-    with gr.Tab("Senaryo 3 - Servis Entegrasyonu"):
+    with gr.Tab("Senaryo 3 - Servis Entegrasyonu", interactive=False):
         with gr.Accordion("Tekli Sorgu", open=False):
             with gr.Row():
                     with gr.Column(scale=1):
@@ -525,13 +777,132 @@ with gr.Blocks(js=js_func,theme=theme) as demo:
             file_button_sen3.click(fn=tcmb_file, inputs=file_input_sen3, outputs=file_output_sen3)
             download_button_sen3.click(fn=save_to_excel, inputs=file_output_sen3, outputs=gr.File())
 
+  
+    with gr.Tab("Senaryo 2 - Doküman Bazlı Cevaplama"):
+        with gr.Row():
+            max_token = gr.Text("400", interactive=True, scale=1, label="Max Token")
+        with gr.Tab("RAG Genel"):
+           
+            with gr.Row():
+                with gr.Column(scale=1):
+                     file_input_sen21 = gr.File(label="Excel Dosyası Ekle", file_types=[".xlsx",".pdf",".docx","doc",".txt",".xls"],interactive=True, file_count="multiple")
+                with gr.Column(scale=2):
+                    file_button_sen21 = gr.Button("Dosyaları Gönder", variant="primary")
+                    file_clear_button_sen21 = gr.ClearButton(components=[file_input_sen21, file_output_sen3], value="Temizle", variant="stop")
+                    file_output_sen21 = gr.Textbox(label="Collection", interactive=False)
+
+                file_button_sen21.click(fn=add_files_to_collection, inputs=[file_input_sen21], outputs=file_output_sen21)
+            
+            with gr.Accordion("Tekli Sorgu", open=False):
+                with gr.Row():
+                    sen21_input = gr.Textbox(lines=2, label="Soru", scale=1, interactive=True)
+                    sen21_output = gr.Textbox(label="Cevap",interactive=False,scale=2)
+                with gr.Row():  
+                    sen21_button = gr.Button("Soruyu Gönder", variant="primary")
+                    sen21_clear_butoon = gr.ClearButton(components=[sen21_input,sen21_output],value="Temizle", variant="stop" )
+
+                sen21_button.click(fn=send_to_rag, inputs=[sen21_input,file_output_sen21,max_token], outputs=sen21_output)
+    
+            with gr.Accordion("Çoklu Sorgu", open=False):
+                with gr.Row():
+                    file_input_sen211 = gr.File(label="Excel Dosyası Ekle", file_types=[".xlsx"])
+                    file_output_sen211 = gr.DataFrame(label="RAG Sonuçları", interactive=False, scale=3,wrap=True, col_count=2)
+                with gr.Row():
+                    file_button_sen211 = gr.Button("Dosyayı Gönder", variant="primary")
+                    file_clear_button_sen211 = gr.ClearButton(components=[file_input_sen211, file_output_sen211], value="Temizle", variant="stop")
+                with gr.Row():
+                    download_button_sen211 = gr.Button("Sonuçları İndir")
+                
+
+                file_button_sen211.click(fn=file_to_RAG, inputs=[file_input_sen211,file_output_sen21,max_token], outputs=file_output_sen211)
+                download_button_sen211.click(fn=save_to_excel, inputs=file_output_sen211, outputs=gr.File())
+        
+        with gr.Tab("Büyül Boyutlu Dosya"):
+           
+            
+            with gr.Accordion("Tekli Sorgu", open=False):
+                with gr.Row():
+                    sen22_input = gr.Textbox(lines=2, label="Soru", scale=1, interactive=True)
+                    sen22_output = gr.Textbox(label="Cevap",interactive=False,scale=2)
+                with gr.Row():  
+                    sen22_button = gr.Button("Soruyu Gönder", variant="primary")
+                    sen22_clear_butoon = gr.ClearButton(components=[sen22_input,sen22_output],value="Temizle", variant="stop" )
+
+                sen22_button.click(fn=send_to_bigdoc, inputs=[sen22_input, max_token], outputs=sen22_output)
+    
+            with gr.Accordion("Çoklu Sorgu", open=False):
+                with gr.Row():
+                    file_input_sen22 = gr.File(label="Excel Dosyası Ekle", file_types=[".xlsx"])
+                    file_output_sen22 = gr.DataFrame(label="Büyü Boyutlu Döküman Sonuçları", interactive=False, scale=3,wrap=True, col_count=2)
+                with gr.Row():
+                    file_button_sen22 = gr.Button("Dosyayı Gönder", variant="primary")
+                    file_clear_button_sen22 = gr.ClearButton(components=[file_input_sen22, file_output_sen22], value="Temizle", variant="stop")
+                with gr.Row():
+                    download_button_sen22 = gr.Button("Sonuçları İndir")
+                
+
+                file_button_sen22.click(fn=send_to_bigdoc, inputs=[file_input_sen22,max_token], outputs=file_output_sen22)
+                download_button_sen22.click(fn=save_to_excel, inputs=file_output_sen22, outputs=gr.File())
+
+        with gr.Tab("Excel"):
+  
+            with gr.Accordion("Tekli Sorgu", open=False):
+                with gr.Row():
+                    sen23_input = gr.Textbox(lines=2, label="Soru", scale=1, interactive=True)
+                    sen23_output = gr.Textbox(label="Cevap",interactive=False,scale=2)
+                with gr.Row():  
+                    sen23_button = gr.Button("Soruyu Gönder", variant="primary")
+                    sen23_clear_butoon = gr.ClearButton(components=[sen23_input,sen23_output],value="Temizle", variant="stop" )
+
+                sen23_button.click(fn=send_to_excel, inputs=[sen23_input, max_token], outputs=sen23_output)
+    
+            with gr.Accordion("Çoklu Sorgu", open=False):
+                with gr.Row():
+                    file_input_sen23 = gr.File(label="Excel Dosyası Ekle", file_types=[".xlsx"])
+                    file_output_sen23 = gr.DataFrame(label="Excel Sonuçları", interactive=False, scale=3,wrap=True)
+                with gr.Row():
+                    file_button_sen23 = gr.Button("Dosyayı Gönder", variant="primary")
+                    file_clear_button_sen23 = gr.ClearButton(components=[file_input_sen23, file_output_sen23], value="Temizle", variant="stop")
+                with gr.Row():
+                    download_button_sen23 = gr.Button("Sonuçları İndir")
+                
+
+                file_button_sen23.click(fn=file_to_excel, inputs=[file_input_sen23,max_token], outputs=file_output_sen23)
+                download_button_sen23.click(fn=save_to_excel, inputs=file_output_sen23, outputs=gr.File())
+
+        with gr.Tab("Tablo Sorgu"):
+  
+            with gr.Accordion("Tekli Sorgu", open=False):
+                with gr.Row():
+                    sen24_input = gr.Textbox(lines=2, label="Soru", scale=1, interactive=True)
+                    sen24_output = gr.Textbox(label="Cevap",interactive=False,scale=2)
+                with gr.Row():  
+                    sen24_button = gr.Button("Soruyu Gönder", variant="primary")
+                    sen24_clear_butoon = gr.ClearButton(components=[sen24_input,sen24_output],value="Temizle", variant="stop" )
+
+                sen24_button.click(fn=send_to_tablo, inputs=[sen24_input, max_token], outputs=sen24_output)
+    
+            with gr.Accordion("Çoklu Sorgu", open=False):
+                with gr.Row():
+                    file_input_sen24 = gr.File(label="Excel Dosyası Ekle", file_types=[".xlsx"])
+                    file_output_sen24 = gr.DataFrame(label="Tablo Sorgu Sonuçları", interactive=False, scale=3,wrap=True)
+                with gr.Row():
+                    file_button_sen24 = gr.Button("Dosyayı Gönder", variant="primary")
+                    file_clear_button_sen24 = gr.ClearButton(components=[file_input_sen24, file_output_sen24], value="Temizle", variant="stop")
+                with gr.Row():
+                    download_button_sen24 = gr.Button("Sonuçları İndir")
+                
+
+                file_button_sen24.click(fn=file_to_tablo, inputs=[file_input_sen24,max_token], outputs=file_output_sen24)
+                download_button_sen24.click(fn=save_to_excel, inputs=file_output_sen24, outputs=gr.File())
+
+            
+            
             
                 
-    """
-    with gr.Tab("Senaryo 2 - Doküman Bazlı Cevaplama"):
 
-        with gr.Accordion("Buaraya", open=False):
-          with gr.Tab("Refere İçeren Döküman"):
+            
+                        
               
           #with gr.Tab("Revize Döküman"):
               
@@ -540,8 +911,8 @@ with gr.Blocks(js=js_func,theme=theme) as demo:
           #with gr.Tab("Büyük Boy"):
           
           #with gr.Row():
-               text_2 = gr.Textbox()
-    """
+              # text_2 = gr.Textbox()
+
 
 demo.launch( server_name="0.0.0.0", server_port=7860)
 
