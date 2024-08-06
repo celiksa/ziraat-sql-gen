@@ -32,6 +32,7 @@ import prompt_templates
 prompt_input = prompt_templates.prompt_input
 prompt_input_def = prompt_templates.prompt_input_def
 prompt_input_sen1 = prompt_templates.prompt_input_sen1
+prompt_input_sql = prompt_templates.prompt_sql_run
 
 
 #senaryo2_api_base_url = "http://127.0.0.1:8000/"
@@ -246,6 +247,7 @@ def sql_file (file, query_type):
       input_texts = []
       generated_sqls = []
       sql_results=[]
+      sql_db_results= []
       
       for text in df.iloc[:, 0]:
           
@@ -260,14 +262,18 @@ def sql_file (file, query_type):
               
           
           sql_query = model_inference.generate_text(prompt=input, guardrails=False)
-      
+          
             
           if query_type =="SQL":
               try:
                 result = query_db(sql_query)
                 if result is not None:
                     table_string = sql_result_to_table_string(result)
-                    sql_results.append(table_string)
+                    sql_db_results.append(table_string)
+                    input_sql = prompt_input_sql.format(sql_query, result)
+                    response = model_inference.generate_text(prompt=input_sql, guardrails=False)
+                    sql_results.append(response)
+
                 else:
                         sql_results.append("Query returned no results or encountered an error.")
               except Exception as e:
@@ -276,6 +282,7 @@ def sql_file (file, query_type):
                     sql_results.append(error_message)
           else:
               sql_results.append("")
+              sql_db_results.append("")
               
           
 
@@ -287,7 +294,8 @@ def sql_file (file, query_type):
       result_df = pd.DataFrame({
           'Soru': input_texts,
           'SQL Kodu': generated_sqls,
-          'Veri Sonuç': sql_results
+          'SQL DB Sonucu': sql_results,
+          'Orjinal DB Sonucu': sql_db_results
       })
       
       print(result_df)
