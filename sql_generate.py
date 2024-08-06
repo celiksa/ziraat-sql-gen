@@ -609,6 +609,145 @@ def file_to_tablo(file, max_token = 900):
       })
     return result_df
 
+def send_to_refere (query, max_token = 900):
+   
+    url = senaryo2_api_base_url + "perform_refere_rag"
+    # Prepare the headers
+    headers = {
+        'accept': 'application/json',
+        'Content-Type': 'application/json'
+    }
+
+    # Prepare the payload
+    payload = {
+        "query": query,
+        "max_token": max_token
+    }
+
+    try:
+        # Make the POST request
+        response = requests.post(url, headers=headers, data=json.dumps(payload))
+        
+        # Check if the request was successful
+        response.raise_for_status()
+        
+        # Parse the JSON response
+        json_response = response.json()
+        
+        # Extract and return only the 'result' field
+        return json_response.get('result')
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred: {e}")
+        return None
+
+def file_to_refere (file, max_token):
+    df = pd.read_excel(file.name, header=None)
+    results = []
+    inputs = []
+    for text in df.iloc[:, 0]:
+        inputs.append(text)
+        
+        result =  send_to_refere(text, max_token)
+        #print (result)
+        results.append(result)
+    result_df = pd.DataFrame({
+          'Soru': inputs,
+          'Refere Cevap': results
+      })
+    return result_df
+
+def add_files_to_refere(files, collection_name="ziraat_refere_pdf"):
+    
+    #print (file_types)
+    if not files:
+        return "No files selected."
+    
+    result = None
+    for file in files:
+        result = upload_pdf(file,collection_name)
+    return result
+
+def send_to_revize (query, max_token = 900):
+   
+    url = senaryo2_api_base_url + "perform_revised_rag"
+    # Prepare the headers
+    headers = {
+        'accept': 'application/json',
+        'Content-Type': 'application/json'
+    }
+
+    # Prepare the payload
+    payload = {
+        "query": query,
+        "max_token": max_token
+    }
+
+    try:
+        # Make the POST request
+        response = requests.post(url, headers=headers, data=json.dumps(payload))
+        
+        # Check if the request was successful
+        response.raise_for_status()
+        
+        # Parse the JSON response
+        json_response = response.json()
+        
+        # Extract and return only the 'result' field
+        return json_response.get('result')
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred: {e}")
+        return None
+
+def file_to_revize(file, max_token):
+    df = pd.read_excel(file.name, header=None)
+    results = []
+    inputs = []
+    for text in df.iloc[:, 0]:
+        inputs.append(text)
+        
+        result =  send_to_refere(text, max_token)
+        #print (result)
+        results.append(result)
+    result_df = pd.DataFrame({
+          'Soru': inputs,
+          'Revize Cevap': results
+      })
+    return result_df
+
+def add_files_to_revize(files, collection_name="ziraat_revised_pdf"):
+    
+    #print (file_types)
+    if not files:
+        return "No files selected."
+    
+    result = None
+    for file in files:
+        result = upload_pdf(file,collection_name)
+    return result
+
+def add_files_to_excel(files, collection_name="ziraat_excel"):
+    
+    #print (file_types)
+    if not files:
+        return "No files selected."
+    
+    result = None
+    for file in files:
+        result = upload_pdf(file,collection_name)
+    return result
+
+
+def add_files_to_tablo(files, collection_name="ziraat_table_pdf"):
+    
+    #print (file_types)
+    if not files:
+        return "No files selected."
+    
+    result = None
+    for file in files:
+        result = upload_pdf(file,collection_name)
+    return result
+
 
 iframe_url = "https://web-chat.global.assistant.watson.appdomain.cloud/preview.html?backgroundImageURL=https%3A%2F%2Feu-de.assistant.watson.cloud.ibm.com%2Fpublic%2Fimages%2Fupx-b6be7111-313a-4ea9-81d0-e191261e9f66%3A%3A12d2f1fc-dbcf-4df1-a091-ab6933b57c0a&integrationID=b483e10c-006f-4743-a2d8-7a24ede095a6&region=eu-de&serviceInstanceID=b6be7111-313a-4ea9-81d0-e191261e9f66"
 #iframe_url = iframe_url.encode("utf-8")
@@ -824,14 +963,14 @@ with gr.Blocks(js=js_func,theme=theme) as demo:
             download_button_sen3.click(fn=save_to_excel, inputs=file_output_sen3, outputs=gr.File())
 
   
-    with gr.Tab("Senaryo 2 - Doküman Bazlı Cevaplama", interactive=False):
+    with gr.Tab("Senaryo 2 - Doküman Bazlı Cevaplama", interactive=True):
         with gr.Row():
             max_token = gr.Text("400", interactive=True, scale=1, label="Max Token")
         with gr.Tab("RAG Genel"):
            
             with gr.Row():
                 with gr.Column(scale=1):
-                     file_input_sen21 = gr.File(label="Excel Dosyası Ekle", file_types=[".xlsx",".pdf",".docx","doc",".txt",".xls"],interactive=True, file_count="multiple")
+                     file_input_sen21 = gr.File(label="Dosyaları Ekle", file_types=[".xlsx",".pdf",".docx","doc",".txt",".xls"],interactive=True, file_count="multiple")
                 with gr.Column(scale=2):
                     file_button_sen21 = gr.Button("Dosyaları Gönder", variant="primary")
                     file_clear_button_sen21 = gr.ClearButton(components=[file_input_sen21, file_output_sen3], value="Temizle", variant="stop")
@@ -891,6 +1030,17 @@ with gr.Blocks(js=js_func,theme=theme) as demo:
                 download_button_sen22.click(fn=save_to_excel, inputs=file_output_sen22, outputs=gr.File())
 
         with gr.Tab("Excel"):
+            with gr.Row():
+                    with gr.Column(scale=1):
+                        file_input_sen23 = gr.File(label="Dosyaları Ekle", file_types=[".xlsx",".xls"],interactive=True, file_count="multiple")
+                    with gr.Column(scale=2):
+                        file_button_sen23 = gr.Button("Dosyaları Gönder", variant="primary")
+                        file_output_sen23 = gr.Textbox(label="Collection", interactive=False)
+
+                        file_clear_button_sen23 = gr.ClearButton(components=[file_input_sen23, file_output_sen23], value="Temizle", variant="stop")
+                    
+                    file_button_sen23.click(fn=add_files_to_excel, inputs=[file_input_sen23], outputs=file_output_sen23)
+  
   
             with gr.Accordion("Tekli Sorgu", open=False):
                 with gr.Row():
@@ -917,6 +1067,16 @@ with gr.Blocks(js=js_func,theme=theme) as demo:
                 download_button_sen23.click(fn=save_to_excel, inputs=file_output_sen23, outputs=gr.File())
 
         with gr.Tab("Tablo Sorgu"):
+            with gr.Row():
+                    with gr.Column(scale=1):
+                        file_input_sen24 = gr.File(label="Dosyaları Ekle", file_types=[".xlsx",".xls"],interactive=True, file_count="multiple")
+                    with gr.Column(scale=2):
+                        file_button_sen24 = gr.Button("Dosyaları Gönder", variant="primary")
+                        file_output_sen24 = gr.Textbox(label="Collection", interactive=False)
+
+                        file_clear_button_sen24 = gr.ClearButton(components=[file_input_sen24, file_output_sen24], value="Temizle", variant="stop")
+                    
+                    file_button_sen24.click(fn=add_files_to_tablo, inputs=[file_input_sen24], outputs=file_output_sen24)
   
             with gr.Accordion("Tekli Sorgu", open=False):
                 with gr.Row():
@@ -941,10 +1101,80 @@ with gr.Blocks(js=js_func,theme=theme) as demo:
 
                 file_button_sen24.click(fn=file_to_tablo, inputs=[file_input_sen24,max_token], outputs=file_output_sen24)
                 download_button_sen24.click(fn=save_to_excel, inputs=file_output_sen24, outputs=gr.File())
+        
 
+
+        with gr.Tab("Refere Döküman"):
+            with gr.Row():
+                with gr.Column(scale=1):
+                     file_input_sen25 = gr.File(label="Dosyaları Ekle", file_types=[".pdf"],interactive=True, file_count="multiple")
+                with gr.Column(scale=2):
+                    file_button_sen25 = gr.Button("Dosyaları Gönder", variant="primary")
+                    file_output_sen25 = gr.Textbox(label="Collection", interactive=False)
+
+                    file_clear_button_sen25 = gr.ClearButton(components=[file_input_sen25, file_output_sen25], value="Temizle", variant="stop")
+                   
+                file_button_sen25.click(fn=add_files_to_refere, inputs=[file_input_sen25], outputs=file_output_sen25)
+  
+            with gr.Accordion("Tekli Sorgu", open=False):
+                with gr.Row():
+                    sen25_input = gr.Textbox(lines=2, label="Soru", scale=1, interactive=True)
+                    sen25_output = gr.Textbox(label="Cevap",interactive=False,scale=2)
+                with gr.Row():  
+                    sen25_button = gr.Button("Soruyu Gönder", variant="primary")
+                    sen25_clear_butoon = gr.ClearButton(components=[sen25_input,sen25_output],value="Temizle", variant="stop" )
+
+                sen25_button.click(fn=send_to_refere, inputs=[sen25_input, max_token], outputs=sen25_output)
+    
+            with gr.Accordion("Çoklu Sorgu", open=False):
+                with gr.Row():
+                    file_input_sen25 = gr.File(label="Dosya Ekle", file_types=[".xlsx"])
+                    file_output_sen25 = gr.DataFrame(label="Refera Döküman Sonuçları", interactive=False, scale=3,wrap=True)
+                with gr.Row():
+                    file_button_sen25 = gr.Button("Dosyayı Gönder", variant="primary")
+                    file_clear_button_sen25 = gr.ClearButton(components=[file_input_sen25, file_output_sen25], value="Temizle", variant="stop")
+                with gr.Row():
+                    download_button_sen25 = gr.Button("Sonuçları İndir")
+                
+
+                file_button_sen25.click(fn=file_to_refere, inputs=[file_input_sen25,max_token], outputs=file_output_sen25)
+                download_button_sen25.click(fn=save_to_excel, inputs=file_output_sen25, outputs=gr.File())
             
-            
-            
+        with gr.Tab("Revize Döküman"):
+            with gr.Row():
+                with gr.Column(scale=1):
+                     file_input_sen26 = gr.File(label="Dosyaları Ekle", file_types=[".pdf"],interactive=True, file_count="multiple")
+                with gr.Column(scale=2):
+                    file_button_sen26 = gr.Button("Dosyaları Gönder", variant="primary")
+                    file_output_sen26 = gr.Textbox(label="Collection", interactive=False)
+
+                    file_clear_button_sen26 = gr.ClearButton(components=[file_input_sen26, file_output_sen26], value="Temizle", variant="stop")
+                   
+                file_button_sen26.click(fn=add_files_to_revize, inputs=[file_input_sen26], outputs=file_output_sen26)
+  
+            with gr.Accordion("Tekli Sorgu", open=False):
+                with gr.Row():
+                    sen26_input = gr.Textbox(lines=2, label="Soru", scale=1, interactive=True)
+                    sen26_output = gr.Textbox(label="Cevap",interactive=False,scale=2)
+                with gr.Row():  
+                    sen26_button = gr.Button("Soruyu Gönder", variant="primary")
+                    sen26_clear_butoon = gr.ClearButton(components=[sen26_input,sen26_output],value="Temizle", variant="stop" )
+
+                sen26_button.click(fn=send_to_revize, inputs=[sen26_input, max_token], outputs=sen26_output)
+    
+            with gr.Accordion("Çoklu Sorgu", open=False):
+                with gr.Row():
+                    file_input_sen26 = gr.File(label="Dosya Ekle", file_types=[".xlsx"])
+                    file_output_sen26 = gr.DataFrame(label="Refera Döküman Sonuçları", interactive=False, scale=3,wrap=True)
+                with gr.Row():
+                    file_button_sen26 = gr.Button("Dosyayı Gönder", variant="primary")
+                    file_clear_button_sen26 = gr.ClearButton(components=[file_input_sen26, file_output_sen26], value="Temizle", variant="stop")
+                with gr.Row():
+                    download_button_sen26 = gr.Button("Sonuçları İndir")
+                
+
+                file_button_sen26.click(fn=file_to_revize, inputs=[file_input_sen26,max_token], outputs=file_output_sen26)
+                download_button_sen26.click(fn=save_to_excel, inputs=file_output_sen26, outputs=gr.File())
                 
 
             
