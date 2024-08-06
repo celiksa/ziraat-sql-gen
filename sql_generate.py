@@ -20,6 +20,8 @@ import gradio as gr
 from datetime import datetime
 import random
 import mimetypes
+from tabulate import tabulate
+
 
 
 #from prompt_templates import prompt_input
@@ -224,6 +226,20 @@ def save_to_excel(df):
 
     return temp_file.name
 
+def sql_result_to_table_string(result):
+    if isinstance(result, pd.DataFrame):
+        if result.empty:
+            return "Query returned an empty DataFrame."
+        return tabulate(result, headers='keys', tablefmt='pretty', showindex=False)
+    elif isinstance(result, list):
+        if not result:
+            return "No results found."
+        df = pd.DataFrame(result[1:], columns=result[0])
+        return tabulate(df, headers='keys', tablefmt='pretty', showindex=False)
+    else:
+        return str(result)  # Fallback for unexpected result types
+    
+
 def sql_file (file, query_type):
       
       df = pd.read_excel(file.name, header=None)
@@ -240,9 +256,25 @@ def sql_file (file, query_type):
 
           else:
               input = prompt_input.format(text)
+
               
           
           sql_query = model_inference.generate_text(prompt=input, guardrails=False)
+      
+            
+          if query_type =="SQL":
+              try:
+                result = query_db(sql_query)
+                if result is not None:
+                    table_string = sql_result_to_table_string(result)
+                    sql_results.append(table_string)
+                else:
+                        sql_results.append("Query returned no results or encountered an error.")
+              except Exception as e:
+                    error_message = f"An error occurred while executing the query: {e}"
+                    print(error_message)
+                    sql_results.append(error_message)
+                    
           
 
           print(sql_query)
@@ -252,7 +284,8 @@ def sql_file (file, query_type):
       # Create DataFrame with two columns
       result_df = pd.DataFrame({
           'Soru': input_texts,
-          'SQL Kodu': generated_sqls
+          'SQL Kodu': generated_sqls,
+          'Veri Sonuç': sql_results
       })
       
       print(result_df)
@@ -268,7 +301,7 @@ def send_to_tcmb(input,type):
     try:
         response = tcmb.index(input, api_key)
     
-    
+        print (response)
         # Extract the generated_answer
         generated_answer = response['generated_answer']
 
@@ -289,7 +322,10 @@ def send_to_tcmb(input,type):
             return  df
     except Exception as e:
         # Handle the exception
-        error_message = "Servisten Cevap Alınamadı"
+        if response:
+            error_message = response
+        else:
+            error_message = "Servisten Cevap Alınamadı"
         # You might want to log the error or return it to the user
         return error_message, error_message
 
@@ -778,7 +814,7 @@ with gr.Blocks(js=js_func,theme=theme) as demo:
             download_button_sen3.click(fn=save_to_excel, inputs=file_output_sen3, outputs=gr.File())
 
   
-    with gr.Tab("Senaryo 2 - Doküman Bazlı Cevaplama"):
+    with gr.Tab("Senaryo 2 - Doküman Bazlı Cevaplama", interactive=False):
         with gr.Row():
             max_token = gr.Text("400", interactive=True, scale=1, label="Max Token")
         with gr.Tab("RAG Genel"):

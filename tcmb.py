@@ -231,7 +231,10 @@ class EVDS:
         client = MistralClient(api_key=api_key)
         response = client.chat(model=model, messages=messages, tools=self.tools, tool_choice="auto")
         messages.append(response.choices[0].message)
-        tool_call = response.choices[0].message.tool_calls[0]
+        if response.choices[0].message.tool_calls:
+            tool_call = response.choices[0].message.tool_calls[0]
+        else:
+            return response.choices[0].message
         function_name = tool_call.function.name
         function_params = json.loads(tool_call.function.arguments)
         if self.validate_input(function_params):
