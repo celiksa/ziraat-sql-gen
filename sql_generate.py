@@ -274,7 +274,9 @@ def sql_file (file, query_type):
                     error_message = f"An error occurred while executing the query: {e}"
                     print(error_message)
                     sql_results.append(error_message)
-                    
+          else:
+              sql_results.append("")
+              
           
 
           print(sql_query)
