@@ -280,6 +280,7 @@ def sql_file (file, query_type):
                     error_message = f"An error occurred while executing the query: {e}"
                     print(error_message)
                     sql_results.append(error_message)
+                    sql_db_results.append(error_message)
           else:
               sql_results.append("")
               sql_db_results.append("")
@@ -288,6 +289,7 @@ def sql_file (file, query_type):
 
           print(sql_query)
           generated_sqls.append(sql_query)
+
       print (input_texts)
       print(generated_sqls)
       # Create DataFrame with two columns
