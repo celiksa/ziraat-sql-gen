@@ -290,8 +290,10 @@ def sql_file (file, query_type):
           print(sql_query)
           generated_sqls.append(sql_query)
 
-      print (input_texts)
-      print(generated_sqls)
+      print (len(input_texts), " ", input_texts)
+      print (len(generated_sqls), " ", generated_sqls)
+      print (len(sql_results), " ", sql_results)
+      print (len(sql_db_results), " ", sql_db_results)
       # Create DataFrame with two columns
       result_df = pd.DataFrame({
           'Soru': input_texts,
